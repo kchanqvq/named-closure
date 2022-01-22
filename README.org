@@ -1,7 +1,7 @@
 #+TITLE: NAMED-CLOSURE - introspectable and redefinable closures
 * Why?
-  Hot take: closures in Common Lisp and most lisps are broken. (Maybe
-  more so in non-lisps, but who cares.)
+  Hot take: closures in Common Lisp and most lisps are broken for
+  long-running images. (Maybe more so in non-lisps, but who cares.)
 
   Comparing to function symbols, closures are nearly unusable in the
   following aspects:
@@ -56,10 +56,10 @@
   variables with the same names are carried over across update.
 
   Note: newly introduced variables are unbound for updated old
-  closures! This will likely cause a ~unbound-slot~ condition when
-  such closure is called. You're free to ~store-value~ restart your
-  implementation (usually) provides to fix up the closure if possible.
-  There isn't anything more we can help ~:/~
+  closures! This will likely cause an ~unbound-slot~ condition when
+  such closure is called. You're free to use the ~store-value~ restart
+  your implementation (usually) provides to fix up the closure if
+  possible.  There isn't anything more we can help ~:/~
 
 * Example
   #+BEGIN_SRC lisp
