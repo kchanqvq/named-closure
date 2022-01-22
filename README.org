@@ -28,7 +28,7 @@
      programs", which expect objects that are funcallable.
 
 * What
-  ~NAMED-CLOSURES~ provides ~DEFNCLO~ and ~NCLO~.
+  ~NAMED-CLOSURE~ provides ~DEFNCLO~ and ~NCLO~.
 
   ~(nclo NAME LAMBDA-LIST . BODY)~ is similar to ~(lambda LAMBDA-LIST
   . BODY)~, but returns a funcallable object with slots corresponding
