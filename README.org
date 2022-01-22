@@ -1,0 +1,93 @@
+#+TITLE: NAMED-CLOSURE - introspectable and redefinable closures
+* Why?
+  Hot take: closures in Common Lisp and most lisps are broken. (Maybe
+  more so in non-lisps, but who cares.)
+
+  Comparing to function symbols, closures are nearly unusable in the
+  following aspects:
+  
+  1. They're hard to introspect, both from a user aspect and (even
+     more so) programmatically. SBCL for example allows you to
+     retrieve values in the flat closure, but do not save variable
+     information.
+     
+  2. As a consequence, they in general don't have readable print
+     syntax, and it might be impossible to write one. Function symbols
+     on the other hand can be print and then read to get the exactly
+     same object.
+     
+  3. They're near impossible to redefine. For a function symbol,
+     setting its function cell causes all call site to consistently
+     call the new definition. This is impossible for closures.
+
+  Closures are still useful because:
+  
+  1. Concise syntax.
+     
+  2. They're the lingua franca for a whole bunch of "functional
+     programs", which expect objects that are funcallable.
+
+* What
+  ~NAMED-CLOSURES~ provides ~DEFNCLO~ and ~NCLO~.
+
+  ~(nclo NAME LAMBDA-LIST . BODY)~ is similar to ~(lambda LAMBDA-LIST
+  . BODY)~, but returns a funcallable object with slots corresponding
+  to free variable in ~BODY~, has readable print syntax, and if ~nclo~
+  with the same ~NAME~ is encountered (for example, if re-evaluated
+  from REPL), the function definition of all such funcallable objects
+  is updated. Closed variables with the same names are carried over
+  across update.
+
+  #+BEGIN_SRC lisp
+    (defnclo something (lambda-list-1...)
+        (lambda-list-2...)
+      body...)
+  #+END_SRC
+  is similar to
+  #+BEGIN_SRC lisp
+    (defun make-something (lambda-list-1...)
+      (lambda (lambda-list-2...)
+        body...))
+  #+END_SRC
+  except that ~make-something~ now returns a funcallable object with
+  slots corresponding to variables declared in ~lambda-list-1~, has
+  readable print syntax, and re-evaluating the ~defnclo~ updates the
+  function definition of all such funcallable objects. Closed
+  variables with the same names are carried over across update.
+
+  Note: newly introduced variables are unbound for updated old
+  closures! This will likely cause a ~unbound-slot~ condition when
+  such closure is called. You're free to ~store-value~ restart your
+  implementation (usually) provides to fix up the closure if possible.
+  There isn't anything more we can help ~:/~
+
+* Example
+  #+BEGIN_SRC lisp
+    (use-package :named-closure)
+    (defun make-inc-1 (x) (nclo inc (y) (setf x (+ x y))))
+    (defparameter *test-instance* (make-inc-1 5))
+    ,*test-instance* ; => #.(MAKE-INC 5)
+    (funcall *test-instance* 6) ; => 11
+    (funcall *test-instance* 6) ; => 17
+    (defun make-inc-1 (x) (nclo inc (y) (setf x (- x y)))) ; changed our mind!!!
+    (funcall *test-instance* 6) ; => 11
+    (funcall *test-instance* 6) ; => 5
+  #+END_SRC
+
+  p.s. I will probably ensure ~NAME-CLOSURE~ only ever exports obscure
+  names, so it should be quite safe to ~use-package~ it!
+  
+* How
+  Under the hood, ~defnclo~ defines a funcallable class named
+  ~something-class~, which in turn indirect calls through the symbol
+  ~something~ so that it is redefinable.
+
+  ~nclo~ is implemented by walking ~BODY~ and collecting its free
+  variables, then calling ~defnclo~ with the free variable list passed
+  as ~LAMBDA-LIST-1~.
+
+  There's one subtlety involved with ~nclo~: ~nclo~ usually appears as
+  a non-top-level form, but it needs to ensure creating a top-level
+  function definition for ~NAME~ in the runtime environment. We do this
+  by abusing ~load-time-value~.  
+  
