@@ -65,7 +65,7 @@ same names are carried over across update."
              object))
          (defmethod print-object ((object ,funcallable-class-name) stream)
            (with-slots ,fvs object
-             (format stream "#.~a"
+             (format stream "#.~s"
                      (cons ',make-function-name
                            ,(lambda-list-serialize-form lambda-list-1)))))
          (defun ,name (object ,@lambda-list-2)
@@ -85,5 +85,5 @@ variables with the same names are carried over across update."
     #+sbcl
     (sb-kernel::%compiler-defclass (funcallable-class-name name) nil nil fvs)
     `(funcall (make-function-name
-               (load-time-value (defnclo ,name ,fvs ,lambda-list ,@body)))
-              ,@fvs)))
+               (load-time-value (defnclo ,name (&key ,@fvs) ,lambda-list ,@body)))
+              ,@(mapcan (lambda (fv) (list (alexandria:make-keyword fv) fv)) fvs))))
