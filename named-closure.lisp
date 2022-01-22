@@ -33,6 +33,8 @@ NAMED-CLOSURE might not function properly."))
               (hu.dwim.walker:collect-variable-references
                (hu.dwim.walker:walk-form form :environment (hu.dwim.walker:make-walk-environment env))))))))
 
+(defclass nclo () () (:metaclass funcallable-standard-class))
+
 (defmacro defnclo (name lambda-list-1 lambda-list-2 &body body)
   "Defines a named closure type.
 
@@ -51,7 +53,7 @@ same names are carried over across update."
     (multiple-value-bind (forms decls doc)
         (alexandria:parse-body body :documentation t)
       `(progn
-         (defclass ,funcallable-class-name ()
+         (defclass ,funcallable-class-name (nclo)
            ,(mapcar #'list fvs)
            (:metaclass funcallable-standard-class))
          (defmethod initialize-instance ((object ,funcallable-class-name) &key)
