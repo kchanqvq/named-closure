@@ -25,13 +25,23 @@ NAMED-CLOSURE might not function properly."))
     (intern (concatenate 'string "MAKE-" (symbol-name symbol))))
   (defun funcallable-class-name (symbol)
     (intern (concatenate 'string (symbol-name symbol) "-CLASS")))
+  (defvar *inhibit-walker-eval-load-time-value* nil "Mega Haxx!")
+  (defmethod initialize-instance :after ((self hu.dwim.walker:load-time-value-form) &key &allow-other-keys)
+    (unless *inhibit-walker-eval-load-time-value*
+      (setf (hu.dwim.walker:value-of self) (eval (hu.dwim.walker:body-of self)))))
   (defun walk-fvs (form env)
-    (delete-duplicates
-     (mapcar #'hu.dwim.walker:name-of
-             (remove-if-not
-              (lambda (elt) (typep elt 'hu.dwim.walker:unwalked-lexical-variable-reference-form))
-              (hu.dwim.walker:collect-variable-references
-               (hu.dwim.walker:walk-form form :environment (hu.dwim.walker:make-walk-environment env))))))))
+    (handler-bind
+        ((hu.dwim.walker:simple-walker-style-warning
+           (lambda (c) (declare (ignore c)) (invoke-restart 'muffle-warning))))
+      (let* ((*inhibit-walker-eval-load-time-value* t)
+             (walked (hu.dwim.walker:walk-form form :environment (hu.dwim.walker:make-walk-environment env))))
+        (values
+         (delete-duplicates
+          (mapcar #'hu.dwim.walker:name-of
+                  (remove-if-not
+                   (lambda (elt) (typep elt 'hu.dwim.walker:unwalked-lexical-variable-reference-form))
+                   (hu.dwim.walker:collect-variable-references walked))))
+         (hu.dwim.walker:unwalk-form walked))))))
 
 (defclass nclo () () (:metaclass funcallable-standard-class))
 
@@ -81,9 +91,12 @@ in BODY, has readable print syntax, and if `nclo' with the same NAME
 is encountered (for example, if re-evaluated from REPL), the function
 definition of all such funcallable objects is updated. Closed
 variables with the same names are carried over across update."
-  (let ((fvs (walk-fvs `(labels ((,name ,lambda-list ,@body)) #',name) env)))
+  (multiple-value-bind (fvs expanded)
+      (walk-fvs `(lambda ,lambda-list ,@body) env)
+    (assert (eq (car expanded) 'function))
+    (assert (eq (caadr expanded) 'lambda))
     #+sbcl
     (sb-kernel::%compiler-defclass (funcallable-class-name name) nil nil fvs)
     `(funcall (make-function-name
-               (load-time-value (defnclo ,name (&key ,@fvs) ,lambda-list ,@body)))
+               (load-time-value (defnclo ,name (&key ,@fvs) ,@ (cdadr expanded))))
               ,@(mapcan (lambda (fv) (list (alexandria:make-keyword fv) fv)) fvs))))
