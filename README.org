@@ -38,7 +38,7 @@
     all such funcallable objects is updated. Closed variables with the
     same names are carried over across update.
 
-  -
+  - ~defnclo~
     #+BEGIN_SRC lisp
       (defnclo something (lambda-list-1...)
           (lambda-list-2...)
@@ -66,7 +66,7 @@
   Saying ~nclo~ is similar to ~lambda~ is *a lie*. Currently, ~nclo~
   effectively copies the captured environment instead of directly
   link to it. See [[https://github.com/BlueFlo0d/named-closure/issues/1]]
-  to understand the important behavior different between ~nclo~ and ~lambda~.
+  to understand the important behavioral difference between ~nclo~ and ~lambda~.
 
 ** Excuses
 
@@ -74,7 +74,7 @@
    identical to ~lambda~. I'm currently not doing it because
    - It complicates introspection and proper readable printing
    - It nukes upgradability. While it's not unreasonable to ask user
-     to fix up old closures using STORE-VALUE, it sounds pretty
+     to fix up old closures using ~store-value~, it sounds pretty
      impratical to expect user to fix the sharing structure between
      different closures.
    - Closures are convenient. But remember we have *real objects*!
