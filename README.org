@@ -86,7 +86,7 @@
     (use-package :named-closure)
     (defun make-inc-1 (x) (nclo inc (y) (setf x (+ x y))))
     (defparameter *test-instance* (make-inc-1 5))
-    ,*test-instance* ; => #.(MAKE-INC :X 5)
+    *test-instance* ; => #.(MAKE-INC :X 5)
     (funcall *test-instance* 6) ; => 11
     (funcall *test-instance* 6) ; => 17
     (defun make-inc-1 (x) (nclo inc (y) (setf x (- x y)))) ; changed our mind!!!
@@ -99,8 +99,9 @@
   
 * How
   Under the hood, ~defnclo~ defines a funcallable class named
-  ~something-class~, which in turn indirect calls through the symbol
-  ~something~ so that it is redefinable.
+  ~something~, which in turn indirect calls through its
+  class-allocated ~'named-closure::code~ slot so that it is
+  redefinable.
 
   ~nclo~ is implemented by walking ~BODY~ and collecting its free
   variables, then calling ~defnclo~ with the free variable list (with

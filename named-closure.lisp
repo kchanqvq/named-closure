@@ -23,8 +23,6 @@ NAMED-CLOSURE might not function properly."))
               ,rest)))
   (defun make-function-name (symbol)
     (intern (concatenate 'string "MAKE-" (symbol-name symbol))))
-  (defun funcallable-class-name (symbol)
-    (intern (concatenate 'string (symbol-name symbol) "-CLASS")))
   (defvar *inhibit-walker-eval-load-time-value* nil "Mega Haxx!")
   (defmethod initialize-instance :after ((self hu.dwim.walker:load-time-value-form) &key &allow-other-keys)
     (unless *inhibit-walker-eval-load-time-value*
@@ -43,7 +41,8 @@ NAMED-CLOSURE might not function properly."))
                    (hu.dwim.walker:collect-variable-references walked))))
          (hu.dwim.walker:unwalk-form walked))))))
 
-(defclass nclo () () (:metaclass funcallable-standard-class))
+(defclass nclo () ((code :allocation :class))
+  (:metaclass funcallable-standard-class))
 
 (defmacro defnclo (name lambda-list-1 lambda-list-2 &body body)
   "Defines a named closure type.
@@ -58,30 +57,34 @@ print syntax, and re-evaluating the DEFNCLO updates the function
 definition of all such funcallable objects. Closed variables with the
 same names are carried over across update."
   (let ((fvs (lambda-list-fvs lambda-list-1))
-        (make-function-name (make-function-name name))
-        (funcallable-class-name (funcallable-class-name name)))
+        (make-function-name (make-function-name name)))
     (multiple-value-bind (forms decls doc)
         (alexandria:parse-body body :documentation t)
-      `(progn
-         (defclass ,funcallable-class-name (nclo)
-           ,(mapcar #'list fvs)
-           (:metaclass funcallable-standard-class))
-         (defmethod initialize-instance ((object ,funcallable-class-name) &key)
+      `(symbol-macrolet ((the-lambda
+                           (lambda (object ,@lambda-list-2)
+                             (with-slots ,fvs object
+                               ,@decls ,@forms))))
+         (defclass ,name (nclo)
+           ((code :initform the-lambda :allocation :class) ,@(mapcar #'list fvs))
+           (:metaclass funcallable-standard-class)
+           ,@(when doc `((:documentation ,doc))))
+         (defmethod initialize-instance ((object ,name) &key)
            (set-funcallable-instance-function
-            object (lambda (&rest args) (apply ',name object args))))
+            object (lambda (&rest args) (apply (slot-value object 'code) object args))))
          (defun ,make-function-name ,lambda-list-1
-           (let ((object (make-instance ',funcallable-class-name)))
+           (let ((object (make-instance ',name)))
              ,@(mapcar (lambda (fv) `(setf (slot-value object ',fv) ,fv)) fvs)
              object))
-         (defmethod print-object ((object ,funcallable-class-name) stream)
+         (defmethod print-object ((object ,name) stream)
            (with-slots ,fvs object
              (format stream "#.~s"
                      (cons ',make-function-name
                            ,(lambda-list-serialize-form lambda-list-1)))))
-         (defun ,name (object ,@lambda-list-2)
-           ,doc
-           (with-slots ,fvs object
-             ,@decls ,@forms))))))
+         (let ((class (find-class ',name)))
+           (when (class-finalized-p class)
+             (setf (slot-value (class-prototype class) 'code)
+                   the-lambda)))
+         ',name))))
 
 (defmacro nclo (name lambda-list &body body &environment env)
   "Similar to (lambda LAMBDA-LIST . BODY).
@@ -96,7 +99,7 @@ variables with the same names are carried over across update."
     (assert (eq (car expanded) 'function))
     (assert (eq (caadr expanded) 'lambda))
     #+sbcl
-    (sb-kernel::%compiler-defclass (funcallable-class-name name) nil nil fvs)
+    (sb-kernel::%compiler-defclass name nil nil fvs)
     `(funcall (make-function-name
                (load-time-value (defnclo ,name (&key ,@fvs) ,@ (cdadr expanded))))
               ,@(mapcan (lambda (fv) (list (alexandria:make-keyword fv) fv)) fvs))))
