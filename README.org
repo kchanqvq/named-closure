@@ -30,30 +30,31 @@
 * What
   ~NAMED-CLOSURE~ provides ~DEFNCLO~ and ~NCLO~.
 
-  ~(nclo NAME LAMBDA-LIST . BODY)~ is similar to ~(lambda LAMBDA-LIST
-  . BODY)~, but returns a funcallable object with slots corresponding
-  to free variable in ~BODY~, has readable print syntax, and if ~nclo~
-  with the same ~NAME~ is encountered (for example, if re-evaluated
-  from REPL), the function definition of all such funcallable objects
-  is updated. Closed variables with the same names are carried over
-  across update.
+  - ~(nclo NAME LAMBDA-LIST . BODY)~ is similar to ~(lambda
+    LAMBDA-LIST . BODY)~, but returns a funcallable object with slots
+    corresponding to free variable in ~BODY~, has readable print
+    syntax, and if ~nclo~ with the same ~NAME~ is encountered (for
+    example, if re-evaluated from REPL), the function definition of
+    all such funcallable objects is updated. Closed variables with the
+    same names are carried over across update.
 
-  #+BEGIN_SRC lisp
-    (defnclo something (lambda-list-1...)
-        (lambda-list-2...)
-      body...)
-  #+END_SRC
-  is similar to
-  #+BEGIN_SRC lisp
-    (defun make-something (lambda-list-1...)
-      (lambda (lambda-list-2...)
-        body...))
-  #+END_SRC
-  except that ~make-something~ now returns a funcallable object with
-  slots corresponding to variables declared in ~lambda-list-1~, has
-  readable print syntax, and re-evaluating the ~defnclo~ updates the
-  function definition of all such funcallable objects. Closed
-  variables with the same names are carried over across update.
+  -
+    #+BEGIN_SRC lisp
+      (defnclo something (lambda-list-1...)
+          (lambda-list-2...)
+        body...)
+    #+END_SRC
+    is similar to
+    #+BEGIN_SRC lisp
+      (defun make-something (lambda-list-1...)
+        (lambda (lambda-list-2...)
+          body...))
+    #+END_SRC
+    except that ~make-something~ now returns a funcallable object with
+    slots corresponding to variables declared in ~lambda-list-1~, has
+    readable print syntax, and re-evaluating the ~defnclo~ updates the
+    function definition of all such funcallable objects. Closed
+    variables with the same names are carried over across update.
 
   Note: newly introduced variables are unbound for updated old
   closures! This will likely cause an ~unbound-slot~ condition when
@@ -61,6 +62,25 @@
   your implementation (usually) provides to fix up the closure if
   possible.  There isn't anything more we can help ~:/~
 
+* !!!Caveat!!!
+  Saying ~nclo~ is similar to ~lambda~ is *a lie*. Currently, ~nclo~
+  effectively copies the captured environment instead of directly
+  link to it. See [[https://github.com/BlueFlo0d/named-closure/issues/1]]
+  to understand the important behavior different between ~nclo~ and ~lambda~.
+
+** Excuses
+
+   It is possible to simulate the "correct" environment sharing behavior
+   identical to ~lambda~. I'm currently not doing it because
+   - It complicates introspection and proper readable printing
+   - It nukes upgradability. While it's not unreasonable to ask user
+     to fix up old closures using STORE-VALUE, it sounds pretty
+     impratical to expect user to fix the sharing structure between
+     different closures.
+   - Closures are convenient. But remember we have *real objects*!
+     If you need to rely on multiple closures sharing one environments,
+     maybe it's better to just use CLOS.
+   
 * Example
   #+BEGIN_SRC lisp
     (use-package :named-closure)
