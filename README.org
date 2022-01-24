@@ -20,6 +20,14 @@
      setting its function cell causes all call site to consistently
      call the new definition. This is impossible for closures.
 
+     Why redefining closure? It allows you to fix buggy code for
+     closure (nobody always write correct code the first
+     time!). Without redefinability you'll have closure with wrong
+     code floating around in the image that is almost impossible to
+     fix, unless you remember all the location the closure is used and
+     fix it manually -- I find it much less pleasant and isn't always
+     possible.
+
   Closures are still useful because:
   
   1. Concise syntax.
