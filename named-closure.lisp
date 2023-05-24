@@ -62,8 +62,9 @@ same names are carried over across update."
         (alexandria:parse-body body :documentation t)
       `(symbol-macrolet ((the-lambda
                            (lambda (object ,@lambda-list-2)
+                             ,@decls
                              (with-slots ,fvs object
-                               ,@decls ,@forms))))
+                               ,@forms))))
          (defclass ,name (nclo)
            ((code :initform the-lambda :allocation :class) ,@(mapcar #'list fvs))
            (:metaclass funcallable-standard-class)
