@@ -41,6 +41,9 @@ NAMED-CLOSURE might not function properly."))
                    (hu.dwim.walker:collect-variable-references walked))))
          (hu.dwim.walker:unwalk-form walked))))))
 
+(defun prevent-eval (form)
+  (if (constantp form) form `',form))
+
 (defclass nclo () ((code :allocation :class))
   (:metaclass funcallable-standard-class))
 
@@ -80,7 +83,7 @@ same names are carried over across update."
            (with-slots ,fvs object
              (format stream "#.~s"
                      (cons ',make-function-name
-                           ,(lambda-list-serialize-form lambda-list-1)))))
+                           (mapcar #'prevent-eval ,(lambda-list-serialize-form lambda-list-1))))))
          (let ((class (find-class ',name)))
            (when (class-finalized-p class)
              (setf (slot-value (class-prototype class) 'code)
