@@ -3,7 +3,7 @@
   (:export #:defnclo #:nclo))
 (in-package :named-closure)
 
-(hu.dwim.util:eval-always
+(serapeum:eval-always
   (defun lambda-list-fvs (lambda-list)
     (multiple-value-bind (requires optionals rest keywords)
         (alexandria:parse-ordinary-lambda-list lambda-list)
@@ -24,23 +24,10 @@ NAMED-CLOSURE might not function properly."))
   (defun make-function-name (symbol)
     (intern (concatenate 'string "MAKE-" (symbol-name symbol))
             (symbol-package symbol)))
-  (defvar *inhibit-walker-eval-load-time-value* nil "Mega Haxx!")
-  (defmethod initialize-instance :after ((self hu.dwim.walker:load-time-value-form) &key &allow-other-keys)
-    (unless *inhibit-walker-eval-load-time-value*
-      (setf (hu.dwim.walker:value-of self) (eval (hu.dwim.walker:body-of self)))))
   (defun walk-fvs (form env)
-    (handler-bind
-        ((hu.dwim.walker:simple-walker-style-warning
-           (lambda (c) (declare (ignore c)) (invoke-restart 'muffle-warning))))
-      (let* ((*inhibit-walker-eval-load-time-value* t)
-             (walked (hu.dwim.walker:walk-form form :environment (hu.dwim.walker:make-walk-environment env))))
-        (values
-         (delete-duplicates
-          (mapcar #'hu.dwim.walker:name-of
-                  (remove-if-not
-                   (lambda (elt) (typep elt 'hu.dwim.walker:unwalked-lexical-variable-reference-form))
-                   (hu.dwim.walker:collect-variable-references walked))))
-         (hu.dwim.walker:unwalk-form walked))))))
+    (let ((iterate::*env* env))
+      (values (iterate::free-variables form)
+              (list 'function form)))))
 
 (defun prevent-eval (form)
   (if (constantp form) form `',form))
