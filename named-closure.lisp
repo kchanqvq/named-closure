@@ -26,7 +26,10 @@ NAMED-CLOSURE might not function properly."))
             (symbol-package symbol)))
   (defun walk-fvs (form env)
     (let ((iterate::*env* env))
-      (values (iterate::free-variables form)
+      (values (remove :special (iterate::free-variables form)
+                      :key (alexandria:rcurry
+                            #'trivial-cltl2:variable-information
+                            env))
               (list 'function form)))))
 
 (defun prevent-eval (form)

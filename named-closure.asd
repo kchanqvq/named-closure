@@ -7,4 +7,4 @@
   :components ((:file "named-closure"))
   :depends-on (:closer-mop
                :alexandria :serapeum
-               :iterate))
+               :iterate :trivial-cltl2))
